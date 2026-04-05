@@ -292,6 +292,117 @@ df = pd.json_normalize(
 df[["id", "name", "pricesUSD.gasoline", "pricesUSD.diesel", "source"]].head(20)
 ```
 
+**PHP** (requires `ext-curl` or `allow_url_fopen`):
+
+```php
+<?php
+$json = file_get_contents('https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json');
+$data = json_decode($json, true);
+
+foreach ($data['regions'] as $r) {
+    if ($r['id'] === 'DE') {
+        printf(
+            "%s — gasoline: \$%.2f/L, diesel: \$%.2f/L (source: %s)\n",
+            $r['name'],
+            $r['pricesUSD']['gasoline'],
+            $r['pricesUSD']['diesel'],
+            $r['source']
+        );
+        break;
+    }
+}
+```
+
+**Rust** (using `reqwest` + `serde_json`):
+
+```toml
+# Cargo.toml
+[dependencies]
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde_json = "1"
+```
+
+```rust
+use serde_json::Value;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let url = "https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json";
+    let data: Value = reqwest::blocking::get(url)?.json()?;
+
+    if let Some(regions) = data["regions"].as_array() {
+        let mut rows: Vec<(&str, f64)> = regions
+            .iter()
+            .filter_map(|r| {
+                let name = r["name"].as_str()?;
+                let price = r["pricesUSD"]["gasoline"].as_f64()?;
+                (price > 0.0).then_some((name, price))
+            })
+            .collect();
+        rows.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        for (name, price) in rows.iter().take(10) {
+            println!("{:30} ${:.2} / L", name, price);
+        }
+    }
+    Ok(())
+}
+```
+
+**Go** (standard library only):
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+type Prices struct {
+    Gasoline float64 `json:"gasoline"`
+    Diesel   float64 `json:"diesel"`
+    LPG      float64 `json:"lpg"`
+    Average  float64 `json:"average"`
+}
+
+type Region struct {
+    ID        string `json:"id"`
+    Name      string `json:"name"`
+    Source    string `json:"source"`
+    PricesUSD Prices `json:"pricesUSD"`
+}
+
+type Payload struct {
+    LastUpdated      string   `json:"lastUpdated"`
+    GlobalAverageUSD float64  `json:"globalAverageUSD"`
+    Regions          []Region `json:"regions"`
+}
+
+func main() {
+    res, err := http.Get("https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json")
+    if err != nil {
+        panic(err)
+    }
+    defer res.Body.Close()
+
+    var payload Payload
+    if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+        panic(err)
+    }
+
+    fmt.Printf("Global average: $%.2f / L across %d countries\n",
+        payload.GlobalAverageUSD, len(payload.Regions))
+
+    for _, r := range payload.Regions {
+        if r.ID == "TR" {
+            fmt.Printf("%s — gasoline $%.2f/L (source: %s)\n",
+                r.Name, r.PricesUSD.Gasoline, r.Source)
+            break
+        }
+    }
+}
+```
+
 **Attribution** – when you publish anything built on these files, credit the original upstream sources (EU Commission Weekly Oil Bulletin, World Bank Global Fuel Prices Database, Etalab, MIMIT, Minetur, UK CMA scheme, US EIA, Natural Earth) as listed in the Configuration section.
 
 ## 🤝 Contributing
