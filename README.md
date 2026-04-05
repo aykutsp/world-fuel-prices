@@ -292,6 +292,23 @@ df = pd.json_normalize(
 df[["id", "name", "pricesUSD.gasoline", "pricesUSD.diesel", "source"]].head(20)
 ```
 
+**C# / .NET 8+** (uses `System.Net.Http.Json`):
+
+```csharp
+using System.Net.Http.Json;
+
+record Prices(double Gasoline, double Diesel, double Lpg, double Average);
+record Region(string Id, string Name, string? Source, Prices PricesUSD);
+record Payload(string LastUpdated, double GlobalAverageUSD, Region[] Regions);
+
+using var http = new HttpClient();
+var payload = await http.GetFromJsonAsync<Payload>(
+    "https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json");
+
+var de = payload!.Regions.FirstOrDefault(r => r.Id == "DE");
+Console.WriteLine($"{de!.Name}: ${de.PricesUSD.Gasoline:F2}/L (source: {de.Source})");
+```
+
 **PHP** (requires `ext-curl` or `allow_url_fopen`):
 
 ```php
