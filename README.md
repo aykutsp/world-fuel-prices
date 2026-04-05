@@ -21,6 +21,55 @@ An interactive world map of retail fuel prices, built on top of public data from
 - 🌓 **Light / dark / system theme** with CARTO base tiles that match.
 - 🤖 **Self-updating** – a GitHub Actions workflow regenerates the dataset and redeploys the site on a daily schedule.
 
+## 🧭 Trip calculator (Travel mode)
+
+Switch the sidebar to **Trip** mode to plan a real-world drive on top of the price map.
+
+![Trip mode — Istanbul → Berlin calculated](docs/screenshots/trip-istanbul-berlin.png)
+*Example: Istanbul → Berlin, 2,189 km, 22 h 30 m, crossing 7 countries.*
+
+### Inputs
+
+- **From / To** – free-text fields. Type a city, postcode, landmark or address; Nominatim (OpenStreetMap) resolves it behind the scenes.
+- **📍 Current location** – on each field, the small locate button uses the browser's geolocation API to drop in your current coordinates (the label is reverse-geocoded so it's human-readable).
+- **Add stop** – chain as many as 8 intermediate waypoints between From and To. Each stop has its own text input, locate button and remove (✕) button. OSRM will route through every waypoint in order.
+- **Presets** – one-click routes to try the feature instantly:
+  - Paris → Munich
+  - Madrid → Warsaw
+  - Istanbul → Berlin
+
+### Routing & cost model
+
+When you hit **Calculate** the app:
+
+1. Geocodes every waypoint that isn't already resolved (Nominatim).
+2. Asks OSRM's public demo server for a full-geometry driving route through all of them.
+3. Walks the resulting polyline, running a point-in-polygon test against the bundled Natural Earth borders to figure out which country each segment belongs to.
+4. Simulates refuelling along the way.
+
+The fuel model is the one you'd actually run in your head on a long drive:
+
+| Assumption | Value |
+|---|---|
+| Tank size | 50 L |
+| Range per full tank | 900 km |
+| Consumption | ~5.56 L / 100 km |
+| Reserve refuel threshold | **2 %** (1 L left ≈ 18 km buffer) |
+| Usable distance between refuels | **882 km** |
+| Litres pumped per refill | 49 L (refilling the used 98 %) |
+
+The car starts with **a full 50 L tank bought at the origin country's current price**. As soon as the tank drops to 2 %, the simulation inserts a refill (49 L) priced at whatever country the car is physically in at that moment. The process repeats until you arrive — the final tank is simply the one that takes you to the destination, you don't refuel at the end.
+
+### What the receipt shows
+
+- **Distance** and **drive time** straight from OSRM.
+- **Fuel pumped** – total litres purchased across all refuels and the number of fuel stops.
+- **Cost (USD)** – sum of every refill at its local price.
+- **Per-refuel breakdown** – each entry tells you *where* (country), *when* (km along the route), *how much* (litres) and *how expensive* (price/L and total for that stop). The first row is labelled "Start ·" and represents the full tank you bought at the origin.
+- **A / B pins** on the map mark origin and destination; the route itself is drawn as a coloured polyline and the map auto-fits to its bounds.
+
+All of the pricing for the trip receipt comes from the same daily-refreshed dataset that drives the choropleth, so the numbers line up with what you see on the map.
+
 ## 🛠 Tech Stack
 
 | Layer | Choice |
@@ -139,9 +188,111 @@ Currency conversion uses live USD rates from `open.er-api.com`, with hardcoded f
 
 ## 📜 Changelog
 
+**v1.1.1** – Intermediate stops (up to 8 waypoints per trip), refuel-based cost model (full tank at origin, 2 % reserve refills at local prices), more prominent country name labels on the map.
+
 **v1.1.0** – Trip calculator with from/to geocoding, current-location support, three preset routes, OSRM routing and per-country cost breakdown drawn on the map.
 
 **v1.0.0** – Initial release. Choropleth world map, 129 countries, 5 live station-level feeds, EU Bulletin + World Bank fallback, daily self-updating pipeline.
+
+## 🔌 Open Data API
+
+Every build ships a static, no-auth, no-rate-limit dataset under `api/v1/` in three formats. Hit them directly from scripts, notebooks or other apps — they refresh once a day on the live site.
+
+**Base URL:** `https://aykutsp.github.io/world-fuel-prices/api/v1/`
+
+| Endpoint | Content-Type | Use when |
+|---|---|---|
+| [`prices.json`](https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json) | `application/json` | Programmatic access from JS / Python / anything |
+| [`prices.xml`](https://aykutsp.github.io/world-fuel-prices/api/v1/prices.xml) | `application/xml` | Legacy tooling, spreadsheets, XSLT pipelines |
+| [`prices.txt`](https://aykutsp.github.io/world-fuel-prices/api/v1/prices.txt) | `text/plain` | Eye-balling in the terminal |
+| [`countries.geojson`](https://aykutsp.github.io/world-fuel-prices/api/v1/countries.geojson) | `application/geo+json` | Natural Earth 110m country borders (CC0) for your own maps |
+
+### JSON schema (simplified)
+
+```jsonc
+{
+  "lastUpdated": "2026-04-05T10:00:00.000Z",
+  "sources": [ "France: data.economie.gouv.fr …", "…" ],
+  "globalAverageUSD": 1.17,
+  "regions": [
+    {
+      "id": "FR",                 // ISO 3166-1 alpha-2
+      "iso3": "FRA",
+      "name": "France",
+      "currency": "EUR",
+      "source": "data.economie.gouv.fr (live stations)",
+      "pricesUSD":   { "gasoline": 2.32, "diesel": 2.66, "lpg": 1.17, "average": 2.05 },
+      "pricesLocal": { "gasoline": 2.01, "diesel": 2.31, "lpg": 1.02, "average": 1.78 },
+      "lat": 46.23,
+      "lng":  2.21,
+      "cities": []
+    }
+  ]
+}
+```
+
+### Usage examples
+
+**curl** – fetch the whole payload and pretty-print it:
+
+```bash
+curl -s https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json | jq .
+```
+
+Just one country:
+
+```bash
+curl -s https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json \
+  | jq '.regions[] | select(.id == "DE")'
+```
+
+Top 10 cheapest gasoline markets in the world today:
+
+```bash
+curl -s https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json \
+  | jq -r '.regions
+      | map(select(.pricesUSD.gasoline > 0))
+      | sort_by(.pricesUSD.gasoline)
+      | .[:10]
+      | .[] | "\(.id)\t\(.pricesUSD.gasoline)\t\(.name)"'
+```
+
+**JavaScript / TypeScript** (browser or Node):
+
+```ts
+const res = await fetch('https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json');
+const data = await res.json();
+
+const france = data.regions.find(r => r.id === 'FR');
+console.log(`⛽ ${france.name}: $${france.pricesUSD.gasoline} / L (source: ${france.source})`);
+```
+
+**Python**:
+
+```python
+import urllib.request, json
+
+url = "https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json"
+with urllib.request.urlopen(url) as r:
+    data = json.load(r)
+
+# Average gasoline price across all tracked countries
+prices = [r["pricesUSD"]["gasoline"] for r in data["regions"] if r["pricesUSD"]["gasoline"] > 0]
+print(f"World gasoline average: ${sum(prices) / len(prices):.2f} / L")
+```
+
+**Pandas** – drop straight into a DataFrame for analysis:
+
+```python
+import pandas as pd
+
+df = pd.json_normalize(
+    pd.read_json("https://aykutsp.github.io/world-fuel-prices/api/v1/prices.json")["regions"]
+)
+df[["id", "name", "pricesUSD.gasoline", "pricesUSD.diesel", "source"]].head(20)
+```
+
+**Attribution** – when you publish anything built on these files, credit the original upstream sources (EU Commission Weekly Oil Bulletin, World Bank Global Fuel Prices Database, Etalab, MIMIT, Minetur, UK CMA scheme, US EIA, Natural Earth) as listed in the Configuration section.
 
 ## 🤝 Contributing
 

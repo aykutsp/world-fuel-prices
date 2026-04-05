@@ -50,19 +50,29 @@ const ZoomTracker = ({ onZoom }: { onZoom: (z: number) => void }) => {
   return null;
 };
 
-// Builds a DivIcon showing the price on top of the country polygon.
-const buildPriceLabelIcon = (price: number, ratio: number | null): L.DivIcon => {
+// Builds a DivIcon showing the country name and price on top of the polygon.
+const buildPriceLabelIcon = (
+  name: string,
+  price: number,
+  ratio: number | null,
+  showName: boolean
+): L.DivIcon => {
   let tone = 'mid';
   if (ratio != null) {
     if (ratio < 0.7) tone = 'low';
     else if (ratio > 1.3) tone = 'high';
   }
-  const html = `<div class="price-label price-label-${tone}">$${price.toFixed(2)}</div>`;
+  const safeName = name
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const nameHtml = showName ? `<div class="price-label-name">${safeName}</div>` : '';
+  const html = `<div class="price-label price-label-${tone}">${nameHtml}<div class="price-label-value">$${price.toFixed(2)}</div></div>`;
   return L.divIcon({
     className: 'price-label-wrap',
     html,
-    iconSize: [52, 20],
-    iconAnchor: [26, 10],
+    iconSize: showName ? [100, 36] : [62, 22],
+    iconAnchor: showName ? [50, 18] : [31, 11],
   });
 };
 
@@ -283,18 +293,16 @@ export default function FuelMap({
         {data.regions.map((r) => {
           const price = priceForFuel(r, activeFuel);
           if (price == null) return null;
-          // At low zoom levels the world is tiny — only show labels for big
-          // markets so the map doesn't drown in overlapping chips. From zoom 4
-          // upward, show everything.
-          const big = Math.abs(r.lat) + Math.abs(r.lng); // rough proxy, unused
-          void big;
           if (currentZoom < 3 && r.pricesUSD.average < 0.5) return null;
           const ratio = globalForFuel > 0 ? price / globalForFuel : null;
+          // Show the country name alongside the price once the map is zoomed
+          // in enough for labels not to overlap (zoom ≥ 4).
+          const showName = currentZoom >= 4;
           return (
             <Marker
               key={`label-${r.id}`}
               position={[r.lat, r.lng]}
-              icon={buildPriceLabelIcon(price, ratio)}
+              icon={buildPriceLabelIcon(r.name, price, ratio, showName)}
               interactive={false}
               keyboard={false}
             />

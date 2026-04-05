@@ -331,23 +331,41 @@ html, body {
 
 .price-label {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  padding: 3px 6px;
-  border-radius: 4px;
+  line-height: 1.15;
+  padding: 4px 8px;
+  border-radius: 5px;
   color: #ffffff;
   text-align: center;
   white-space: nowrap;
-  background: rgba(0, 0, 0, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
 }
 
-.price-label-low  { background: rgba(0, 90, 40, 0.85); }
-.price-label-mid  { background: rgba(40, 40, 45, 0.82); }
-.price-label-high { background: rgba(150, 20, 20, 0.88); }
+.price-label-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+.price-label-value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+  font-variant-numeric: tabular-nums;
+}
+
+.price-label-low  { background: rgba(0, 90, 40, 0.88); }
+.price-label-mid  { background: rgba(40, 40, 45, 0.85); }
+.price-label-high { background: rgba(150, 20, 20, 0.9); }
 
 /* Trip endpoint pins (A / B markers) */
 .trip-endpoint-pin { background: transparent; border: none; }

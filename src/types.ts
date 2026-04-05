@@ -38,14 +38,15 @@ export interface GeoPoint {
   lng: number;
 }
 
-export interface TripLegCost {
-  countryId: string;          // ISO-A2, or 'unknown'
+export interface TripRefuel {
+  countryId: string;          // ISO-A2 or 'unknown'
   countryName: string;
-  kilometers: number;
-  litres: number;
-  pricePerLitreUSD: number;   // 0 if unknown
+  atKm: number;               // cumulative distance at which the fill happens
+  litres: number;             // how many litres were pumped into the tank
+  pricePerLitreUSD: number;   // 0 if no price data for that country
   costUSD: number;
   source?: string;
+  isInitial: boolean;         // true for the starting full-tank fill
 }
 
 export interface TripResult {
@@ -57,5 +58,5 @@ export interface TripResult {
   totalLitres: number;
   totalTanks: number;
   totalCostUSD: number;
-  legs: TripLegCost[];
+  refuels: TripRefuel[];
 }
