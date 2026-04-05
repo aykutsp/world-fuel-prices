@@ -1,14 +1,39 @@
-# Fuel Prices
+<div align="center">
+
+# ⛽ Fuel Prices
+
+### Daily-refreshed world map of retail fuel prices, with a per-country trip cost calculator.
+
+**[🌐 Live Demo](https://aykutsp.github.io/world-fuel-prices/)** · **[📖 API Reference](#-open-data-api)** · **[📦 Client Libraries](#-client-libraries)** · **[🐛 Report Bug](https://github.com/aykutsp/world-fuel-prices/issues/new?template=bug_report.yml)** · **[💡 Request Feature](https://github.com/aykutsp/world-fuel-prices/issues/new?template=feature_request.yml)**
+
+<br />
+
+[![Deploy status](https://img.shields.io/github/actions/workflow/status/aykutsp/world-fuel-prices/deploy.yml?branch=main&style=flat-square&label=deploy&logo=githubactions&logoColor=white)](https://github.com/aykutsp/world-fuel-prices/actions/workflows/deploy.yml)
+[![Latest release](https://img.shields.io/github/v/release/aykutsp/world-fuel-prices?style=flat-square&label=release&color=blue)](https://github.com/aykutsp/world-fuel-prices/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/aykutsp/world-fuel-prices?style=flat-square&color=green)](./LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/aykutsp/world-fuel-prices?style=flat-square&color=informational)](https://github.com/aykutsp/world-fuel-prices/commits/main)
+[![Open issues](https://img.shields.io/github/issues/aykutsp/world-fuel-prices?style=flat-square)](https://github.com/aykutsp/world-fuel-prices/issues)
+[![Repo stars](https://img.shields.io/github/stars/aykutsp/world-fuel-prices?style=flat-square&logo=github)](https://github.com/aykutsp/world-fuel-prices/stargazers)
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vite.dev/)
+[![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?style=flat-square&logo=leaflet&logoColor=white)](https://leafletjs.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](./libraries/python)
+[![Go](https://img.shields.io/badge/Go-1.21-00ADD8?style=flat-square&logo=go&logoColor=white)](./libraries/go)
+[![Dart](https://img.shields.io/badge/Dart-3-0175C2?style=flat-square&logo=dart&logoColor=white)](./libraries/flutter)
+[![.NET](https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white)](./libraries/csharp)
+
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](./CONTRIBUTING.md)
+[![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-contributor%20covenant-purple?style=flat-square)](./CODE_OF_CONDUCT.md)
+[![Data sources](https://img.shields.io/badge/data-7%20open%20sources-orange?style=flat-square)](#-configuration)
+
+</div>
+
+---
 
 An interactive world map of retail fuel prices, built on top of public data from national governments, the European Commission and the World Bank. Countries are shaded by average pump price and labeled with the current value for the selected fuel type. The underlying JSON dataset is regenerated automatically every day so the live site always reflects the latest numbers available from upstream feeds.
-
-🌐 **Live demo:** [aykutsp.github.io/world-fuel-prices](https://aykutsp.github.io/world-fuel-prices/)
-
-![Deploy](https://github.com/aykutsp/world-fuel-prices/actions/workflows/deploy.yml/badge.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![React](https://img.shields.io/badge/React-19-61dafb.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6.svg)
-![Vite](https://img.shields.io/badge/Vite-8-646cff.svg)
 
 ## ✨ Features
 
