@@ -188,11 +188,35 @@ Currency conversion uses live USD rates from `open.er-api.com`, with hardcoded f
 
 ## 📜 Changelog
 
+**v1.2.0** – Pre-computed trip endpoints (`/api/v1/trips/*.json`), official client libraries for JavaScript/TypeScript, Python, Go, Dart/Flutter and C#/.NET under `libraries/`, redesigned "Add stop" button, new preset section label, added C# / PHP / Rust / Go API usage examples, community health files (CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, issue templates, Dependabot) and a promotion playbook.
+
 **v1.1.1** – Intermediate stops (up to 8 waypoints per trip), refuel-based cost model (full tank at origin, 2 % reserve refills at local prices), more prominent country name labels on the map.
 
 **v1.1.0** – Trip calculator with from/to geocoding, current-location support, three preset routes, OSRM routing and per-country cost breakdown drawn on the map.
 
 **v1.0.0** – Initial release. Choropleth world map, 129 countries, 5 live station-level feeds, EU Bulletin + World Bank fallback, daily self-updating pipeline.
+
+## 📦 Client Libraries
+
+Language-specific wrappers around the open data API live in [`libraries/`](./libraries/). Each one is a single, thin client that talks to the same static endpoints and exposes typed helpers (`getCountry`, `cheapest`, `getTrip`, etc.).
+
+| Language | Package | Install | Source |
+|---|---|---|---|
+| JavaScript / TypeScript | [`world-fuel-prices`](https://www.npmjs.com/package/world-fuel-prices) (npm) | `npm install world-fuel-prices` | [`libraries/typescript`](./libraries/typescript) |
+| Python 3.9+ | [`world-fuel-prices`](https://pypi.org/project/world-fuel-prices/) (PyPI) | `pip install world-fuel-prices` | [`libraries/python`](./libraries/python) |
+| Go 1.21+ | `github.com/aykutsp/world-fuel-prices/libraries/go` | `go get github.com/aykutsp/world-fuel-prices/libraries/go@latest` | [`libraries/go`](./libraries/go) |
+| Dart / Flutter | [`world_fuel_prices`](https://pub.dev/packages/world_fuel_prices) (pub.dev) | `dart pub add world_fuel_prices` | [`libraries/flutter`](./libraries/flutter) |
+| .NET 8+ | [`WorldFuelPrices`](https://www.nuget.org/packages/WorldFuelPrices) (NuGet) | `dotnet add package WorldFuelPrices` | [`libraries/csharp`](./libraries/csharp) |
+
+All five expose the same surface:
+
+- `getCountry(iso2)` → single country snapshot
+- `getPrices()` → full dataset (cached per-instance)
+- `cheapest(fuel, n)` / `mostExpensive(fuel, n)` → sorted top-N
+- `globalAverage(fuel)` → mean across tracked regions
+- `listTrips()` / `getTrip(slug)` → the pre-computed trip endpoints
+
+See each library's README for language-specific examples. The libraries are published under MIT; the data they return is covered by the upstream licences listed in the Configuration section.
 
 ## 🔌 Open Data API
 
@@ -206,6 +230,8 @@ Every build ships a static, no-auth, no-rate-limit dataset under `api/v1/` in th
 | [`prices.xml`](https://aykutsp.github.io/world-fuel-prices/api/v1/prices.xml) | `application/xml` | Legacy tooling, spreadsheets, XSLT pipelines |
 | [`prices.txt`](https://aykutsp.github.io/world-fuel-prices/api/v1/prices.txt) | `text/plain` | Eye-balling in the terminal |
 | [`countries.geojson`](https://aykutsp.github.io/world-fuel-prices/api/v1/countries.geojson) | `application/geo+json` | Natural Earth 110m country borders (CC0) for your own maps |
+| [`trips/index.json`](https://aykutsp.github.io/world-fuel-prices/api/v1/trips/index.json) | `application/json` | Pre-computed trip catalog (Paris→Munich, Madrid→Warsaw, Istanbul→Berlin) |
+| [`trips/{slug}.json`](https://aykutsp.github.io/world-fuel-prices/api/v1/trips/istanbul-berlin.json) | `application/json` | Full route geometry + per-refuel cost breakdown for one preset |
 
 ### JSON schema (simplified)
 

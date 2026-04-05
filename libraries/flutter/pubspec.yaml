@@ -1,0 +1,20 @@
+name: world_fuel_prices
+description: Dart/Flutter client for the daily-refreshed world fuel prices open data API (https://aykutsp.github.io/world-fuel-prices/).
+version: 1.0.0
+homepage: https://aykutsp.github.io/world-fuel-prices/
+repository: https://github.com/aykutsp/world-fuel-prices
+issue_tracker: https://github.com/aykutsp/world-fuel-prices/issues
+topics:
+  - fuel-prices
+  - open-data
+  - world
+  - http-client
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  http: ^1.2.0
+
+dev_dependencies:
+  lints: ^4.0.0

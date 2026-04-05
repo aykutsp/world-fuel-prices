@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <PackageId>WorldFuelPrices</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>aykutsp</Authors>
+    <Description>Tiny .NET client for the daily-refreshed world fuel prices open data API (https://aykutsp.github.io/world-fuel-prices/).</Description>
+    <PackageTags>fuel-prices;gasoline;diesel;lpg;open-data;world;csharp;dotnet</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://aykutsp.github.io/world-fuel-prices/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/aykutsp/world-fuel-prices</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>
