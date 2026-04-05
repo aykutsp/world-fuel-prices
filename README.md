@@ -458,6 +458,8 @@ Pull requests are welcome. For non-trivial changes, please open an issue first s
 
 ## 📄 License
 
-Released under the [MIT License](./LICENSE).
+MIT. See [`LICENSE`](./LICENSE).
 
-The aggregated dataset is redistributed under the terms of each upstream source – see the table above. Attribution to those sources is required when reusing the generated files.
+Feel free to use this project however you like — fork it, ship it, tear it apart, build something bigger on top of it. If you end up using it in something public, a small credit or a link back would make my day, but it's not a requirement. Thanks for taking a look.
+
+The aggregated dataset is redistributed under the terms of each upstream source — see the data sources table above, and attribute those sources when reusing the generated files.
