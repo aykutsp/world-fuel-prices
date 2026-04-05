@@ -2,6 +2,9 @@
 
 An interactive world map of retail fuel prices, built on top of public data from national governments, the European Commission and the World Bank. Countries are shaded by average pump price and labeled with the current value for the selected fuel type. The underlying JSON dataset is regenerated automatically every day so the live site always reflects the latest numbers available from upstream feeds.
 
+🌐 **Live demo:** [aykutsp.github.io/world-fuel-prices](https://aykutsp.github.io/world-fuel-prices/)
+
+![Deploy](https://github.com/aykutsp/world-fuel-prices/actions/workflows/deploy.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6.svg)
@@ -13,6 +16,7 @@ An interactive world map of retail fuel prices, built on top of public data from
 - 🏷 **On-map price labels** – each country shows its current price in USD per litre, rescaled automatically as you zoom.
 - ⛽ **Multiple fuel types** – toggle between All Fuels, Gasoline, Diesel and LPG. The choropleth and labels restyle in place.
 - 🛰 **Live, station-level data where possible** – France, Italy, Spain, the UK and the United States pull directly from national government feeds that update daily. Remaining countries fall back to the EU Weekly Oil Bulletin and the World Bank Global Fuel Prices Database.
+- 🧭 **Trip calculator** – enter a From / To (or use your current location), pick one of the built-in routes, and get a full receipt: total distance, drive time, tanks, per-country fuel cost breakdown, and a route drawn right on the map. Uses OSRM for routing and Nominatim for geocoding. Assumes a 50 L tank with a 900 km range.
 - 📦 **Static open data endpoints** – the build ships `prices.json`, `prices.xml` and `prices.txt` under `api/v1/`. No auth, no rate limits.
 - 🌓 **Light / dark / system theme** with CARTO base tiles that match.
 - 🤖 **Self-updating** – a GitHub Actions workflow regenerates the dataset and redeploys the site on a daily schedule.
@@ -130,6 +134,14 @@ Currency conversion uses live USD rates from `open.er-api.com`, with hardcoded f
 - [ ] Local-currency display toggle
 - [ ] City-level drilldown for feeds that expose per-station coordinates
 - [ ] Side-by-side country comparison view
+- [ ] Configurable tank size / consumption in the trip calculator
+- [ ] Save favourite routes
+
+## 📜 Changelog
+
+**v1.1.0** – Trip calculator with from/to geocoding, current-location support, three preset routes, OSRM routing and per-country cost breakdown drawn on the map.
+
+**v1.0.0** – Initial release. Choropleth world map, 129 countries, 5 live station-level feeds, EU Bulletin + World Bank fallback, daily self-updating pipeline.
 
 ## 🤝 Contributing
 

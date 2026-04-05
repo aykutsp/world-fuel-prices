@@ -1,18 +1,38 @@
-import { Search, Database, ChevronLeft, Sun, Moon, Monitor, Info } from 'lucide-react';
-import type { FuelData, RegionPrice } from '../../types';
-import type { FuelType, ThemeType } from '../../App';
+import { Search, Database, ChevronLeft, Sun, Moon, Monitor, Info, Globe, Route } from 'lucide-react';
+import type { FeatureCollection } from 'geojson';
+import type { FuelData, RegionPrice, TripResult } from '../../types';
+import type { FuelType, ThemeType, ViewMode } from '../../App';
+import TripCalculator from '../Trip/TripCalculator';
 
 interface SidebarProps {
   data: FuelData | null;
+  countries: FeatureCollection | null;
   selectedRegion: RegionPrice | null;
   onSelectRegion: (region: RegionPrice | null) => void;
   activeFuel: FuelType;
   setActiveFuel: (f: FuelType) => void;
   theme: ThemeType;
   setTheme: (t: ThemeType) => void;
+  view: ViewMode;
+  setView: (v: ViewMode) => void;
+  trip: TripResult | null;
+  setTrip: (t: TripResult | null) => void;
 }
 
-export default function Sidebar({ data, selectedRegion, onSelectRegion, activeFuel, setActiveFuel, theme, setTheme }: SidebarProps) {
+export default function Sidebar({
+  data,
+  countries,
+  selectedRegion,
+  onSelectRegion,
+  activeFuel,
+  setActiveFuel,
+  theme,
+  setTheme,
+  view,
+  setView,
+  trip,
+  setTrip,
+}: SidebarProps) {
   if (!data) return null;
 
   const renderIndicator = (price: number) => {
@@ -36,6 +56,41 @@ export default function Sidebar({ data, selectedRegion, onSelectRegion, activeFu
         </div>
       </div>
 
+      <div className="view-toggle" style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '8px', marginBottom: '10px' }}>
+        {([
+          { key: 'explore', label: 'Explore', Icon: Globe },
+          { key: 'trip', label: 'Trip', Icon: Route },
+        ] as const).map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            onClick={() => setView(key)}
+            style={{
+              flex: 1,
+              padding: '8px 4px',
+              background: view === key ? 'var(--accent-base)' : 'transparent',
+              color: view === key ? '#fff' : 'var(--text-secondary)',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
+          >
+            <Icon size={13} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'trip' && (
+        <TripCalculator data={data} countries={countries} trip={trip} setTrip={setTrip} />
+      )}
+
+      {view === 'explore' && (
+      <>
       <div className="fuel-toggles" style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '8px', marginBottom: '16px' }}>
         {(['average', 'gasoline', 'diesel', 'lpg'] as FuelType[]).map(type => (
           <button
@@ -141,6 +196,8 @@ export default function Sidebar({ data, selectedRegion, onSelectRegion, activeFu
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div className="indicator expensive" style={{ width: 10, height: 10, margin: 0 }}></div> Expensive</div>
         </div>
       </div>
+      </>
+      )}
 
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <p style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4', fontStyle: 'italic' }}>
@@ -148,13 +205,13 @@ export default function Sidebar({ data, selectedRegion, onSelectRegion, activeFu
         </p>
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Developer API Access:</p>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <a href="/api/v1/prices.json" target="_blank" className="api-badge" style={{flex: 1}}>
+          <a href={`${import.meta.env.BASE_URL}api/v1/prices.json`} target="_blank" className="api-badge" style={{flex: 1}}>
             <Database size={14} /> JSON
           </a>
-          <a href="/api/v1/prices.xml" target="_blank" className="api-badge" style={{flex: 1}}>
+          <a href={`${import.meta.env.BASE_URL}api/v1/prices.xml`} target="_blank" className="api-badge" style={{flex: 1}}>
             <Database size={14} /> XML
           </a>
-          <a href="/api/v1/prices.txt" target="_blank" className="api-badge" style={{flex: 1}}>
+          <a href={`${import.meta.env.BASE_URL}api/v1/prices.txt`} target="_blank" className="api-badge" style={{flex: 1}}>
             <Database size={14} /> TXT
           </a>
         </div>

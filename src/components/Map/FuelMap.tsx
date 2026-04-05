@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, GeoJSON, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
-import type { FuelData, RegionPrice } from '../../types';
+import type { FuelData, RegionPrice, TripResult } from '../../types';
 import type { FuelType, ThemeType } from '../../App';
 
 // --- Map helpers ------------------------------------------------------------
@@ -10,12 +10,19 @@ import type { FuelType, ThemeType } from '../../App';
 const MapEffect = ({
   selectedRegion,
   zoomLevel,
+  trip,
 }: {
   selectedRegion: RegionPrice | null;
   zoomLevel: number;
+  trip?: TripResult | null;
 }) => {
   const map = useMap();
   useEffect(() => {
+    if (trip && trip.polyline.length > 1) {
+      const bounds = L.latLngBounds(trip.polyline.map((p) => L.latLng(p[0], p[1])));
+      map.fitBounds(bounds, { padding: [60, 60], animate: true, duration: 1.2 });
+      return;
+    }
     if (selectedRegion) {
       map.setView([selectedRegion.lat, selectedRegion.lng], 5, {
         animate: true,
@@ -24,7 +31,7 @@ const MapEffect = ({
     } else {
       map.setView([30, 0], zoomLevel, { animate: true, duration: 1.2 });
     }
-  }, [selectedRegion, map, zoomLevel]);
+  }, [selectedRegion, map, zoomLevel, trip]);
   return null;
 };
 
@@ -79,29 +86,26 @@ function priceForFuel(region: RegionPrice, fuel: FuelType): number | null {
 
 interface FuelMapProps {
   data: FuelData | null;
+  countries: FeatureCollection | null;
   selectedRegion: RegionPrice | null;
   activeFuel: FuelType;
   theme: ThemeType;
   onSelectRegion?: (region: RegionPrice | null) => void;
+  trip?: TripResult | null;
 }
 
 export default function FuelMap({
   data,
+  countries,
   selectedRegion,
   activeFuel,
   theme,
   onSelectRegion,
+  trip,
 }: FuelMapProps) {
   const [zoom] = useState(2);
   const [currentZoom, setCurrentZoom] = useState(2);
-  const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
-
-  useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}api/v1/countries.geojson`)
-      .then((r) => r.json())
-      .then((j: FeatureCollection) => setGeojson(j))
-      .catch((e) => console.error('GeoJSON load failed:', e));
-  }, []);
+  const geojson = countries;
 
   // Index regions by ISO-A2 so the GeoJSON styler can find prices fast.
   const regionById = useMemo(() => {
@@ -231,7 +235,7 @@ export default function FuelMap({
         zoomControl={false}
         worldCopyJump
       >
-        <MapEffect selectedRegion={selectedRegion} zoomLevel={2} />
+        <MapEffect selectedRegion={selectedRegion} zoomLevel={2} trip={trip} />
         <ZoomTracker onZoom={setCurrentZoom} />
         <TileLayer
           key={theme}
@@ -245,6 +249,36 @@ export default function FuelMap({
             style={styleFor as any}
             onEachFeature={onEachFeature}
           />
+        )}
+        {trip && trip.polyline.length > 1 && (
+          <>
+            <Polyline
+              positions={trip.polyline}
+              pathOptions={{ color: '#ffffff', weight: 6, opacity: 0.35 }}
+            />
+            <Polyline
+              positions={trip.polyline}
+              pathOptions={{ color: '#3b82f6', weight: 3.5, opacity: 0.95 }}
+            />
+            <Marker
+              position={trip.polyline[0]}
+              icon={L.divIcon({
+                className: 'trip-endpoint-pin',
+                html: '<div class="trip-pin trip-pin-from">A</div>',
+                iconSize: [22, 22],
+                iconAnchor: [11, 11],
+              })}
+            />
+            <Marker
+              position={trip.polyline[trip.polyline.length - 1]}
+              icon={L.divIcon({
+                className: 'trip-endpoint-pin',
+                html: '<div class="trip-pin trip-pin-to">B</div>',
+                iconSize: [22, 22],
+                iconAnchor: [11, 11],
+              })}
+            />
+          </>
         )}
         {data.regions.map((r) => {
           const price = priceForFuel(r, activeFuel);
