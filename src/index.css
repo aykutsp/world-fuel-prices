@@ -438,11 +438,64 @@ html, body {
 .trip-loc-btn:hover { background: rgba(59, 130, 246, 0.15); color: var(--text-primary); }
 .trip-loc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.trip-add-stop {
+  margin-top: 10px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.08));
+  border: 1px dashed rgba(59, 130, 246, 0.55);
+  color: #93c5fd;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.trip-add-stop:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.3), rgba(59, 130, 246, 0.15));
+  border-color: rgba(59, 130, 246, 0.9);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.22);
+}
+.trip-add-stop:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-style: solid;
+}
+.trip-add-stop svg { flex-shrink: 0; }
+
+.trip-remove-btn {
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+.trip-remove-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.trip-wp { display: flex; flex-direction: column; margin-bottom: 6px; }
+
+.trip-try-label {
+  margin-top: 16px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+
 .trip-presets {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 .trip-preset {
   flex: 1 1 auto;

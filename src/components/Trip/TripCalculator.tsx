@@ -230,6 +230,7 @@ export default function TripCalculator({ data, countries, trip, setTrip }: Props
           <Plus size={12} /> Add stop{stopCount >= MAX_STOPS ? ` (max ${MAX_STOPS})` : ''}
         </button>
 
+        <div className="trip-try-label">Try one of these routes</div>
         <div className="trip-presets">
           {PRESET_ROUTES.map((p) => (
             <button

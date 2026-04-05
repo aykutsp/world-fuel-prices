@@ -731,9 +731,264 @@ async function run() {
   // countries.geojson (raw passthrough; already validated)
   fs.writeFileSync(path.join(apiDir, 'countries.geojson'), geoData.raw);
 
+  // Pre-computed Trip API endpoints for the built-in preset routes.
+  await generateTripEndpoints(apiDir, data, geoData);
+
   console.log(
     `\n✅ Generated ${regions.length} regions. Global avg: $${globalAverageUSD}/l.`
   );
+}
+
+// --------------------------- Pre-computed trips ----------------------------
+//
+// Third parties that just want "Paris → Munich today" without running OSRM
+// themselves can GET /api/v1/trips/paris-munich.json. The schema matches the
+// TripResult type in src/types.ts so the client library wrappers can
+// deserialize it directly.
+
+const PRESET_TRIPS = [
+  {
+    slug: 'paris-munich',
+    from: { label: 'Paris, France', lat: 48.8566, lng: 2.3522 },
+    to: { label: 'Munich, Germany', lat: 48.1374, lng: 11.5755 },
+  },
+  {
+    slug: 'madrid-warsaw',
+    from: { label: 'Madrid, Spain', lat: 40.4168, lng: -3.7038 },
+    to: { label: 'Warsaw, Poland', lat: 52.2297, lng: 21.0122 },
+  },
+  {
+    slug: 'istanbul-berlin',
+    from: { label: 'Istanbul, Türkiye', lat: 41.0082, lng: 28.9784 },
+    to: { label: 'Berlin, Germany', lat: 52.52, lng: 13.405 },
+  },
+];
+
+const TANK_LITRES = 50;
+const RANGE_KM = 900;
+const RESERVE_FRACTION = 0.02;
+const USABLE_KM_PER_TANK = RANGE_KM * (1 - RESERVE_FRACTION);
+const REFILL_LITRES = TANK_LITRES * (1 - RESERVE_FRACTION);
+
+async function generateTripEndpoints(apiDir, dataset, geoData) {
+  const tripsDir = path.join(apiDir, 'trips');
+  if (!fs.existsSync(tripsDir)) fs.mkdirSync(tripsDir, { recursive: true });
+
+  const index = [];
+  for (const preset of PRESET_TRIPS) {
+    try {
+      console.log(`Computing trip: ${preset.slug}...`);
+      const trip = await computeTrip(preset, dataset, geoData);
+      fs.writeFileSync(path.join(tripsDir, `${preset.slug}.json`), JSON.stringify(trip));
+      index.push({
+        slug: preset.slug,
+        from: trip.from.label,
+        to: trip.to.label,
+        totalKm: trip.totalKm,
+        totalCostUSD: trip.totalCostUSD,
+        refuelStops: trip.refuels.length,
+        url: `/api/v1/trips/${preset.slug}.json`,
+      });
+      console.log(
+        `  ✓ ${preset.slug}: ${trip.totalKm.toFixed(0)} km, $${trip.totalCostUSD.toFixed(2)}, ${trip.refuels.length} stops`
+      );
+    } catch (e) {
+      console.warn(`  ✗ ${preset.slug}: ${e.message}`);
+    }
+  }
+  fs.writeFileSync(
+    path.join(tripsDir, 'index.json'),
+    JSON.stringify(
+      {
+        lastUpdated: new Date().toISOString(),
+        description:
+          'Pre-computed driving routes with per-refuel cost breakdown. Model: 50 L tank, 900 km range, refuel at 2% reserve.',
+        trips: index,
+      },
+      null,
+      2
+    )
+  );
+  console.log(`  ✓ Wrote trips index (${index.length} routes)`);
+}
+
+async function computeTrip(preset, dataset, geoData) {
+  const waypoints = [preset.from, preset.to];
+  const coordsStr = waypoints.map((w) => `${w.lng},${w.lat}`).join(';');
+  const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson&steps=false`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'fuel-prices-aggregator/1.0' },
+  });
+  if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.code !== 'Ok' || !json.routes?.length) throw new Error('No route');
+  const route = json.routes[0];
+  const totalKm = route.distance / 1000;
+  const durationMinutes = route.duration / 60;
+  const polyline = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+
+  const byIso2 = geoData.byIso2;
+  const findCountry = (lng, lat) => {
+    for (const iso2 of Object.keys(byIso2)) {
+      // Fallback: nearest centroid (we only have centroids in geoData.byIso2);
+      // for accurate point-in-polygon we use the raw features below.
+      void iso2;
+    }
+    // Scan the raw features once — we have geoData.geo available via closure.
+    for (const feature of geoData.geo.features) {
+      const bbox = featureBBoxLite(feature);
+      if (!bbox) continue;
+      if (lng < bbox[0] || lng > bbox[2] || lat < bbox[1] || lat > bbox[3]) continue;
+      if (pointInFeatureLite(lng, lat, feature)) {
+        const p = feature.properties || {};
+        return {
+          id: (p.ISO_A2_EH || p.ISO_A2 || '').toUpperCase() || 'UNK',
+          name: p.NAME || p.ADMIN || 'Unknown',
+        };
+      }
+    }
+    return null;
+  };
+
+  const resolvePrice = (lng, lat) => {
+    const hit = findCountry(lng, lat);
+    if (!hit) return { id: 'unknown', name: 'International waters', price: 0, source: undefined };
+    const region = dataset.regions.find((r) => r.id.toUpperCase() === hit.id);
+    const price = region && region.pricesUSD.gasoline > 0 ? region.pricesUSD.gasoline : 0;
+    return { id: hit.id, name: region?.name || hit.name, price, source: region?.source };
+  };
+
+  const refuels = [];
+  const originHit = resolvePrice(preset.from.lng, preset.from.lat);
+  refuels.push({
+    countryId: originHit.id,
+    countryName: originHit.name,
+    atKm: 0,
+    litres: TANK_LITRES,
+    pricePerLitreUSD: originHit.price,
+    costUSD: Number((TANK_LITRES * originHit.price).toFixed(3)),
+    source: originHit.source,
+    isInitial: true,
+  });
+
+  let covered = Math.min(USABLE_KM_PER_TANK, totalKm);
+  while (covered < totalKm) {
+    const [lat, lng] = pointOnPolylineAtKmLite(polyline, covered);
+    const hit = resolvePrice(lng, lat);
+    refuels.push({
+      countryId: hit.id,
+      countryName: hit.name,
+      atKm: Number(covered.toFixed(1)),
+      litres: REFILL_LITRES,
+      pricePerLitreUSD: hit.price,
+      costUSD: Number((REFILL_LITRES * hit.price).toFixed(3)),
+      source: hit.source,
+      isInitial: false,
+    });
+    covered += USABLE_KM_PER_TANK;
+  }
+
+  const totalLitres = refuels.reduce((a, r) => a + r.litres, 0);
+  const totalCostUSD = Number(refuels.reduce((a, r) => a + r.costUSD, 0).toFixed(2));
+
+  return {
+    slug: preset.slug,
+    lastUpdated: new Date().toISOString(),
+    from: preset.from,
+    to: preset.to,
+    totalKm: Number(totalKm.toFixed(2)),
+    durationMinutes: Number(durationMinutes.toFixed(1)),
+    polyline,
+    totalLitres: Number(totalLitres.toFixed(1)),
+    totalTanks: Number((totalLitres / TANK_LITRES).toFixed(3)),
+    totalCostUSD,
+    refuels,
+    model: {
+      tankLitres: TANK_LITRES,
+      rangeKm: RANGE_KM,
+      reserveFraction: RESERVE_FRACTION,
+      usableKmPerTank: USABLE_KM_PER_TANK,
+      refillLitres: REFILL_LITRES,
+    },
+  };
+}
+
+// ---- geometry helpers (compact copies; kept local to this script) ---------
+
+function haversineKmLite(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function pointOnPolylineAtKmLite(polyline, targetKm) {
+  let acc = 0;
+  for (let i = 1; i < polyline.length; i++) {
+    const [aLat, aLng] = polyline[i - 1];
+    const [bLat, bLng] = polyline[i];
+    const d = haversineKmLite(aLat, aLng, bLat, bLng);
+    if (acc + d >= targetKm) {
+      const t = d === 0 ? 0 : (targetKm - acc) / d;
+      return [aLat + (bLat - aLat) * t, aLng + (bLng - aLng) * t];
+    }
+    acc += d;
+  }
+  return polyline[polyline.length - 1];
+}
+
+function featureBBoxLite(feature) {
+  const g = feature.geometry;
+  if (!g || !g.coordinates) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const walk = (coords) => {
+    if (typeof coords[0] === 'number') {
+      const [x, y] = coords;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+      return;
+    }
+    for (const c of coords) walk(c);
+  };
+  walk(g.coordinates);
+  return isFinite(minX) ? [minX, minY, maxX, maxY] : null;
+}
+
+function pointInFeatureLite(lng, lat, feature) {
+  const g = feature.geometry;
+  if (!g) return false;
+  if (g.type === 'Polygon') return pointInPolygonLite(lng, lat, g.coordinates);
+  if (g.type === 'MultiPolygon') {
+    for (const p of g.coordinates) if (pointInPolygonLite(lng, lat, p)) return true;
+  }
+  return false;
+}
+
+function pointInPolygonLite(lng, lat, polygon) {
+  if (!pointInRingLite(lng, lat, polygon[0])) return false;
+  for (let i = 1; i < polygon.length; i++) {
+    if (pointInRingLite(lng, lat, polygon[i])) return false;
+  }
+  return true;
+}
+
+function pointInRingLite(lng, lat, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi + 1e-12) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
 }
 
 run().catch((e) => {
