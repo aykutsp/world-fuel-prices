@@ -21,12 +21,27 @@ An interactive world map of retail fuel prices, built on top of public data from
 - 🌓 **Light / dark / system theme** with CARTO base tiles that match.
 - 🤖 **Self-updating** – a GitHub Actions workflow regenerates the dataset and redeploys the site on a daily schedule.
 
+## 📸 Screenshots
+
+**Explore view — choropleth coloured by the currently selected fuel, with in-map price labels per country**
+
+![Explore — all fuels average](docs/screenshots/explore-all-fuels.png)
+
+Switch the toggle to **Gasoline / Diesel / LPG** and the map restyles in place:
+
+![Explore — gasoline](docs/screenshots/explore-gasoline.png)
+
+**Trip calculator (Paris → Munich)** — routing via OSRM, one refuel covers the whole 830 km:
+
+![Trip mode — Paris → Munich](docs/screenshots/trip-paris-munich.png)
+
+**Trip calculator (Istanbul → Berlin)** — longer route, three refuels at 882 km boundaries, per-country cost breakdown in the receipt:
+
+![Trip mode — Istanbul → Berlin](docs/screenshots/trip-istanbul-berlin.png)
+
 ## 🧭 Trip calculator (Travel mode)
 
 Switch the sidebar to **Trip** mode to plan a real-world drive on top of the price map.
-
-![Trip mode — Istanbul → Berlin calculated](docs/screenshots/trip-istanbul-berlin.png)
-*Example: Istanbul → Berlin, 2,189 km, 22 h 30 m, crossing 7 countries.*
 
 ### Inputs
 
