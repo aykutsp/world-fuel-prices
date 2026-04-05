@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Search, Database, ChevronLeft, Sun, Moon, Monitor, Info, Globe, Route } from 'lucide-react';
 import type { FeatureCollection } from 'geojson';
 import type { FuelData, RegionPrice, TripResult } from '../../types';
@@ -33,7 +34,18 @@ export default function Sidebar({
   trip,
   setTrip,
 }: SidebarProps) {
+  const [query, setQuery] = useState('');
   if (!data) return null;
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredRegions = normalizedQuery
+    ? data.regions.filter(
+        (r) =>
+          r.name.toLowerCase().includes(normalizedQuery) ||
+          r.id.toLowerCase() === normalizedQuery ||
+          (r.iso3 && r.iso3.toLowerCase() === normalizedQuery),
+      )
+    : data.regions;
 
   const renderIndicator = (price: number) => {
     const ratio = price / data.globalAverageUSD;
@@ -130,10 +142,12 @@ export default function Sidebar({
 
       <div className="search-container">
         <Search className="search-icon" />
-        <input 
-          type="text" 
-          className="search-input" 
-          placeholder={selectedRegion ? "Search cities..." : "Search countries..."} 
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search countries…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
         />
       </div>
 
@@ -152,7 +166,11 @@ export default function Sidebar({
         )}
 
         {!selectedRegion ? (
-          data.regions.map(region => {
+          filteredRegions.length === 0 ? (
+            <div style={{ padding: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+              No countries match "{query}".
+            </div>
+          ) : filteredRegions.map(region => {
             const price = region.pricesUSD[activeFuel];
             return (
               <div key={region.id} className="list-item" onClick={() => onSelectRegion(region)}>
@@ -190,10 +208,20 @@ export default function Sidebar({
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
           <Info size={14} /> Price Legend
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div className="indicator cheap" style={{ width: 10, height: 10, margin: 0 }}></div> Very Cheap</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div className="indicator moderate" style={{ width: 10, height: 10, margin: 0 }}></div> Average</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div className="indicator expensive" style={{ width: 10, height: 10, margin: 0 }}></div> Expensive</div>
+        <div
+          style={{
+            height: 10,
+            borderRadius: 5,
+            // Matches the 7-bin palette used by the choropleth on the map.
+            background:
+              'linear-gradient(to right, #006837 0%, #31a354 14%, #78c679 28%, #ffffbf 43%, #fdae61 57%, #f46d43 72%, #a50026 100%)',
+            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)',
+          }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-muted)', marginTop: 4 }}>
+          <span>Very cheap</span>
+          <span>Average</span>
+          <span>Expensive</span>
         </div>
       </div>
       </>

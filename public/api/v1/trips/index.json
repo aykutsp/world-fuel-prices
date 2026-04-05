@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-05T11:39:18.362Z",
+  "lastUpdated": "2026-04-05T15:46:52.249Z",
   "description": "Pre-computed driving routes with per-refuel cost breakdown. Model: 50 L tank, 900 km range, refuel at 2% reserve.",
   "trips": [
     {

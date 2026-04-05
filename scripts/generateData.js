@@ -702,16 +702,23 @@ async function run() {
 
   // prices.xml
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<FuelPrices>\n`;
-  xml += `  <LastUpdated>${data.lastUpdated}</LastUpdated>\n`;
+  const xmlEscape = (v) =>
+    String(v ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  xml += `  <LastUpdated>${xmlEscape(data.lastUpdated)}</LastUpdated>\n`;
   xml += `  <GlobalAverageUSD>${data.globalAverageUSD}</GlobalAverageUSD>\n`;
   xml += `  <Sources>\n`;
-  data.sources.forEach((s) => (xml += `    <Source>${s}</Source>\n`));
+  data.sources.forEach((s) => (xml += `    <Source>${xmlEscape(s)}</Source>\n`));
   xml += `  </Sources>\n  <Regions>\n`;
   regions.forEach((r) => {
-    xml += `    <Region id="${r.id}" iso3="${r.iso3}">\n`;
-    xml += `      <Name>${r.name.replace(/&/g, '&amp;')}</Name>\n`;
-    xml += `      <Currency>${r.currency}</Currency>\n`;
-    xml += `      <Source>${r.source}</Source>\n`;
+    xml += `    <Region id="${xmlEscape(r.id)}" iso3="${xmlEscape(r.iso3)}">\n`;
+    xml += `      <Name>${xmlEscape(r.name)}</Name>\n`;
+    xml += `      <Currency>${xmlEscape(r.currency)}</Currency>\n`;
+    xml += `      <Source>${xmlEscape(r.source)}</Source>\n`;
     xml += `      <PricesUSD gasoline="${r.pricesUSD.gasoline}" diesel="${r.pricesUSD.diesel}" lpg="${r.pricesUSD.lpg}" average="${r.pricesUSD.average}" />\n`;
     xml += `      <PricesLocal gasoline="${r.pricesLocal.gasoline}" diesel="${r.pricesLocal.diesel}" lpg="${r.pricesLocal.lpg}" average="${r.pricesLocal.average}" />\n`;
     xml += `    </Region>\n`;
