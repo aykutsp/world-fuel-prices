@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-05T15:46:52.249Z",
+  "lastUpdated": "2026-04-10T19:58:06.266Z",
   "description": "Pre-computed driving routes with per-refuel cost breakdown. Model: 50 L tank, 900 km range, refuel at 2% reserve.",
   "trips": [
     {
@@ -7,7 +7,7 @@
       "from": "Paris, France",
       "to": "Munich, Germany",
       "totalKm": 830.08,
-      "totalCostUSD": 116.1,
+      "totalCostUSD": 117.1,
       "refuelStops": 1,
       "url": "/api/v1/trips/paris-munich.json"
     },
@@ -16,7 +16,7 @@
       "from": "Madrid, Spain",
       "to": "Warsaw, Poland",
       "totalKm": 2859.41,
-      "totalCostUSD": 419.18,
+      "totalCostUSD": 415.91,
       "refuelStops": 4,
       "url": "/api/v1/trips/madrid-warsaw.json"
     },
@@ -25,7 +25,7 @@
       "from": "Istanbul, Türkiye",
       "to": "Berlin, Germany",
       "totalKm": 2189.24,
-      "totalCostUSD": 178.41,
+      "totalCostUSD": 180.22,
       "refuelStops": 3,
       "url": "/api/v1/trips/istanbul-berlin.json"
     }

@@ -1,0 +1,37 @@
+{
+  "status": "ok",
+  "lastUpdated": "2026-04-10T19:58:03.734Z",
+  "generatorVersion": "1.2",
+  "globalAverageUSD": 1.185,
+  "counts": {
+    "totalRegions": 129,
+    "withFullFuelBlock": 126,
+    "stationLevelCountries": 3
+  },
+  "sources": [
+    {
+      "label": "France: data.economie.gouv.fr Prix des carburants (live stations) — Etalab OL 2.0"
+    },
+    {
+      "label": "Italy: MIMIT Osservaprezzi (live stations) — IODL 2.0"
+    },
+    {
+      "label": "Spain: Minetur Servicios REST Carburantes (live stations) — public"
+    },
+    {
+      "label": "United Kingdom: CMA Road Fuel Price Transparency Scheme — Open Government Licence"
+    },
+    {
+      "label": "United States: EIA weekly retail gasoline & diesel — U.S. public domain"
+    },
+    {
+      "label": "European Commission Weekly Oil Bulletin (EU27 fallback) — CC BY 4.0"
+    },
+    {
+      "label": "World Bank Global Fuel Prices Database (rest of world) — ODbL"
+    },
+    {
+      "label": "Natural Earth 110m admin_0 countries — CC0"
+    }
+  ]
+}

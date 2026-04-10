@@ -25,6 +25,8 @@
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import XLSX from 'xlsx';
 
 // ----------------------------- Data source URLs -----------------------------
@@ -738,12 +740,44 @@ async function run() {
   // countries.geojson (raw passthrough; already validated)
   fs.writeFileSync(path.join(apiDir, 'countries.geojson'), geoData.raw);
 
+  // health.json — lightweight status artifact for uptime dashboards.
+  const health = {
+    status: 'ok',
+    lastUpdated: data.lastUpdated,
+    generatorVersion: '1.2',
+    globalAverageUSD,
+    counts: {
+      totalRegions: regions.length,
+      withFullFuelBlock: regions.filter(
+        (r) => r.pricesUSD.gasoline > 0 && r.pricesUSD.diesel > 0
+      ).length,
+      stationLevelCountries: regions.filter((r) =>
+        (r.source ?? '').toLowerCase().includes('live stations')
+      ).length,
+    },
+    sources: data.sources.map((s) => ({ label: s })),
+  };
+  fs.writeFileSync(path.join(apiDir, 'health.json'), JSON.stringify(health, null, 2));
+
   // Pre-computed Trip API endpoints for the built-in preset routes.
   await generateTripEndpoints(apiDir, data, geoData);
 
   console.log(
     `\n✅ Generated ${regions.length} regions. Global avg: $${globalAverageUSD}/l.`
   );
+
+  // Validate against schemas/prices.schema.json. Fails the build if the
+  // generator output drifts from the declared shape. See ADR-0003.
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const validatorPath = path.resolve(here, 'validateDataset.mjs');
+  if (fs.existsSync(validatorPath)) {
+    console.log('\n[Validate] prices.json vs schemas/prices.schema.json...');
+    const result = spawnSync(process.execPath, [validatorPath], { stdio: 'inherit' });
+    if (result.status !== 0) {
+      console.error('Schema validation failed; refusing to publish.');
+      process.exit(result.status ?? 1);
+    }
+  }
 }
 
 // --------------------------- Pre-computed trips ----------------------------

@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aykutsp.github.io/world-fuel-prices/api/v1/prices.schema.json",
+  "title": "world-fuel-prices — prices.json",
+  "description": "Machine-readable contract for the canonical dataset published at /api/v1/prices.json. See ADR-0003 for the stability pledge.",
+  "type": "object",
+  "required": ["lastUpdated", "sources", "globalAverageUSD", "regions"],
+  "additionalProperties": true,
+  "properties": {
+    "lastUpdated": { "type": "string", "format": "date-time" },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "globalAverageUSD": { "type": "number", "minimum": 0 },
+    "regions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/region" }
+    }
+  },
+  "definitions": {
+    "fuelPrices": {
+      "type": "object",
+      "required": ["gasoline", "diesel", "lpg", "average"],
+      "additionalProperties": false,
+      "properties": {
+        "gasoline": { "type": "number", "minimum": 0 },
+        "diesel": { "type": "number", "minimum": 0 },
+        "lpg": { "type": "number", "minimum": 0 },
+        "average": { "type": "number", "minimum": 0 }
+      }
+    },
+    "region": {
+      "type": "object",
+      "required": ["id", "name", "currency", "pricesUSD", "pricesLocal", "lat", "lng", "cities"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "iso3": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "currency": { "type": "string", "minLength": 1 },
+        "source": { "type": "string" },
+        "pricesUSD": { "$ref": "#/definitions/fuelPrices" },
+        "pricesLocal": { "$ref": "#/definitions/fuelPrices" },
+        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lng": { "type": "number", "minimum": -180, "maximum": 180 },
+        "cities": { "type": "array" }
+      }
+    }
+  }
+}

@@ -356,6 +356,56 @@ Deliberately boring. No Kubernetes, no service mesh, no multi-cloud. The data is
 - [ ] Configurable tank size / consumption in the trip calculator
 - [ ] Save favourite routes
 
+## 🏛 Architecture & engineering practices
+
+This project is built to be understood, not just to run. The engineering reference lives under [`docs/architecture/`](./docs/architecture/) and is structured the same way any serious production service is:
+
+| Document | What's in it |
+|---|---|
+| [`docs/architecture/overview.md`](./docs/architecture/overview.md) | C4-model system context + container diagrams |
+| [`docs/architecture/adr/`](./docs/architecture/adr/) | **7 Architecture Decision Records** |
+| [`docs/paid-upgrades.md`](./docs/paid-upgrades.md) | Per-source paid alternatives with cost + effort |
+| [`docs/runbooks/`](./docs/runbooks/) | Upstream failure, release, rollback runbooks |
+
+### The ADRs at a glance
+
+1. **[Static-first architecture](./docs/architecture/adr/0001-static-first-architecture.md)** — why GitHub Pages + cron and not a backend
+2. **[Station-level feeds over national aggregates](./docs/architecture/adr/0002-station-level-feeds-over-national-aggregates.md)** — when we use FR / IT / ES / UK / US live station data and when we don't
+3. **[API versioning and stability pledge](./docs/architecture/adr/0003-api-versioning-and-stability-pledge.md)** — what `/api/v1/` actually promises
+4. **[Rejected fuelo.net for licence reasons](./docs/architecture/adr/0004-rejected-fuelo-net-for-licence-reasons.md)** — the licence-first reasoning that shaped the whole sourcing strategy
+5. **[Refuel simulation as the trip cost model](./docs/architecture/adr/0005-refuel-simulation-as-trip-cost-model.md)** — why the trip calculator simulates real refuels instead of a linear sum
+6. **[Free-data-first with paid upgrade paths](./docs/architecture/adr/0006-free-data-first-with-paid-upgrade-paths.md)** — policy + on-ramp for teams with a budget
+7. **[Client libraries are thin wrappers](./docs/architecture/adr/0007-client-library-strategy.md)** — not an SDK, on purpose
+
+### Quality gates
+
+Everything you'd expect from a serious codebase, enforced in CI on every pull request:
+
+| Gate | Tool | Where |
+|---|---|---|
+| Unit tests | Vitest | [`test/helpers.test.mjs`](./test/helpers.test.mjs) — 12 tests covering `round()`, `xmlEscape()` (regression test for the real XML bug), Haversine, point-in-polygon, and the refuel simulation itself |
+| Type-check | `tsc -b --force` | All TS strict, zero errors |
+| Lint | ESLint + typescript-eslint | `npm run lint` |
+| **Schema validation** | [AJV](https://ajv.js.org/) against [`schemas/prices.schema.json`](./schemas/prices.schema.json) | Runs as the final step of `generate-data`. **A schema mismatch fails the build**, which means the live site stays on the last known good dataset |
+| Security scan | [CodeQL](./.github/workflows/codeql.yml) with `security-extended` queries | Every PR + weekly |
+| Release notes | [Release Drafter](./.github/release-drafter.yml) | Auto-drafted from PR labels |
+
+### One-command quality check
+
+```bash
+make release-check
+# runs: test → typecheck → lint → validate → build
+```
+
+If that's green locally, CI will be green too.
+
+### Observability you get for free
+
+- `GET /api/v1/prices.json` — canonical dataset with `lastUpdated` and `sources`
+- `GET /api/v1/health.json` — per-build freshness + station-level coverage counts, suitable for an uptime dashboard
+- `GET /api/v1/trips/index.json` — pre-computed trip catalogue
+- Every upstream source in `prices.json`'s `sources` field so attribution is machine-readable
+
 ## 📜 Changelog
 
 **v1.2.0** – Pre-computed trip endpoints (`/api/v1/trips/*.json`), official client libraries for JavaScript/TypeScript, Python, Go, Dart/Flutter and C#/.NET under `libraries/`, redesigned "Add stop" button, new preset section label, added C# / PHP / Rust / Go API usage examples, community health files (CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, issue templates, Dependabot) and a promotion playbook.
