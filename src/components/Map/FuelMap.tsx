@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import type { Feature, FeatureCollection, Geometry } from 'geojson';
+import type { Feature, FeatureCollection, Geometry, GeoJsonProperties } from 'geojson';
+import type { PathOptions, StyleFunction } from 'leaflet';
 import type { FuelData, RegionPrice, TripResult } from '../../types';
 import type { FuelType, ThemeType } from '../../App';
 
@@ -141,19 +142,19 @@ export default function FuelMap({
 
   // ----- Styling and interactions for the choropleth layer ------------------
 
-  const featureIso2 = (feature: Feature<Geometry, any>): string => {
-    const p = feature.properties || {};
-    return String(p.ISO_A2_EH || p.ISO_A2 || p.iso_a2 || '').toUpperCase();
+  const featureIso2 = (feature: Feature<Geometry, GeoJsonProperties>): string => {
+    const p = (feature.properties ?? {}) as Record<string, unknown>;
+    return String(p.ISO_A2_EH ?? p.ISO_A2 ?? p.iso_a2 ?? '').toUpperCase();
   };
 
-  const styleFor = (feature?: Feature<Geometry, any>) => {
+  const styleFor: StyleFunction<GeoJsonProperties> = (feature) => {
     if (!feature) {
       return {
         weight: 0.5,
         color: '#444',
         fillColor: '#2b2f36',
         fillOpacity: 0.15,
-      };
+      } as PathOptions;
     }
     const iso2 = featureIso2(feature);
     const region = regionById.get(iso2);
@@ -168,10 +169,11 @@ export default function FuelMap({
     };
   };
 
-  const onEachFeature = (feature: Feature<Geometry, any>, layer: L.Layer) => {
+  const onEachFeature = (feature: Feature<Geometry, GeoJsonProperties>, layer: L.Layer) => {
     const iso2 = featureIso2(feature);
     const region = regionById.get(iso2);
-    const name = feature.properties?.NAME || feature.properties?.ADMIN || iso2;
+    const props = (feature.properties ?? {}) as Record<string, unknown>;
+    const name = (props.NAME as string) || (props.ADMIN as string) || iso2;
     const fmt = (v: number | null) => (v != null ? `$${v.toFixed(2)}` : '—');
     if (region) {
       const price = priceForFuel(region, activeFuel);
@@ -208,9 +210,9 @@ export default function FuelMap({
       },
       mouseout: (e) => {
         const l = e.target as L.Path;
-        (layer as any)._map && (layer as any)._map.eachLayer?.(() => {});
-        // Reset by re-applying the computed style.
-        l.setStyle(styleFor(feature));
+        // Reset by re-applying the computed style for this feature.
+        const resetStyle = styleFor(feature);
+        if (resetStyle) l.setStyle(resetStyle);
       },
       click: () => {
         if (region && onSelectRegion) onSelectRegion(region);
@@ -256,7 +258,7 @@ export default function FuelMap({
           <GeoJSON
             key={layerKey}
             data={geojson}
-            style={styleFor as any}
+            style={styleFor}
             onEachFeature={onEachFeature}
           />
         )}
