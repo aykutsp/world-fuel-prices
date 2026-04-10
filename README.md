@@ -215,6 +215,136 @@ Per-country priority is `station-level feed > EU Weekly Oil Bulletin > World Ban
 
 Currency conversion uses live USD rates from `open.er-api.com`, with hardcoded fallbacks if the FX endpoint is unreachable.
 
+## 🏗 System design: scaling to 1M+ users
+
+The live site currently runs as a static bundle on GitHub Pages with a daily-refreshed dataset — a setup that comfortably handles tens of thousands of monthly visitors. This section walks through what the architecture looks like today, where the bottlenecks are, and the concrete plan for taking the same experience to **1 million monthly active users**.
+
+### Today's architecture
+
+```
+         ┌────────────────────────────┐
+         │  7 upstream open-data feeds│
+         │  (EC · WB · Etalab · MIMIT │
+         │   · Minetur · UK CMA · EIA)│
+         └──────────────┬─────────────┘
+                        │  daily (06:15 UTC)
+                        ▼
+         ┌────────────────────────────┐
+         │  GitHub Actions cron       │
+         │  scripts/generateData.js   │
+         │  → prices.{json,xml,txt}   │
+         │  → trips/*.json            │
+         └──────────────┬─────────────┘
+                        │
+                        ▼
+         ┌────────────────────────────┐
+         │  GitHub Pages (CDN fronted)│
+         └──────────────┬─────────────┘
+                        │
+       ┌────────────────┼────────────────┐
+       ▼                ▼                ▼
+  Browser SPA     Client libraries   Raw API user
+  (React+Leaflet) (npm/PyPI/Go/…)    (curl, jq, BI)
+       │
+       ├── Nominatim (public, 1 req/s)
+       └── OSRM public demo
+```
+
+### Bottlenecks at scale
+
+| # | Layer | Soft ceiling | Fails at |
+|---|---|---|---|
+| 1 | **GitHub Pages bandwidth** | ~100 GB / month | ~200 k daily page loads |
+| 2 | **Nominatim public instance** | 1 req/s per IP, fair-use only | First real trip-calculator spike |
+| 3 | **OSRM demo server** | Community-run, best-effort | Regular production use |
+| 4 | **Single daily refresh** | 24-h cadence | Clients wanting intra-day prices |
+| 5 | **Client-side point-in-polygon** | Runs against 250 KB GeoJSON on main thread | Low-end mobile under load |
+
+### Target architecture for 1M+ MAU
+
+```mermaid
+flowchart TB
+    Users["1M+ MAU<br/>browsers · libraries · raw API"] --> CDN
+    CDN["Cloudflare edge<br/>br + gzip · 15 min TTL<br/>WAF + rate limit"]
+    CDN --> R2["Object storage (R2 / S3)<br/>prices.json · prices.xml<br/>prices/{ISO}.json · trips/{slug}.json<br/>countries.geojson<br/>versioned, atomic latest alias"]
+    CDN -->|miss| Redis["Redis<br/>trip result cache<br/>TTL 1h, SHA256 key"]
+    Redis -->|miss| Geo["Geo-DNS"]
+    Geo --> OSRMEU["OSRM EU"]
+    Geo --> OSRMUS["OSRM US"]
+    Geo --> OSRMSEA["OSRM Asia"]
+    Geo --> Nom["Nominatim<br/>(planet.osm.pbf)"]
+
+    Scheduler["Temporal / EventBridge"] --> Fetchers["Per-source workers<br/>EC · WB · Etalab · MIMIT · Minetur · CMA · EIA"]
+    Fetchers --> Archive["Raw response archive<br/>(immutable)"]
+    Fetchers --> Normalize["Normalize · schema validate · delta diff"]
+    Normalize --> R2
+
+    Fetchers --> OTEL["OpenTelemetry → Grafana + Sentry"]
+    OSRMEU --> OTEL
+```
+
+### Layer-by-layer plan
+
+**1. CDN in front.** Move origin off GitHub Pages onto Cloudflare R2 (or S3 + CloudFront). Brotli shaves the ~250 KB `prices.json` to ~60 KB. 15-minute edge TTL with `stale-while-revalidate=3600` means one miss every quarter-hour per POP — the origin barely notices 1 M MAU.
+
+**2. Dataset sharding.** Publish one fat file **and** per-country files (`prices/{ISO}.json`). A library consumer wanting the Italy number no longer has to download 129 countries worth of JSON.
+
+**3. Real data pipeline.** GitHub Actions is fine at one daily run, but a weekly outage of the cron would silently freeze the dataset. Move to Temporal / EventBridge with one job per upstream feed, idempotent retries, dead-letter queue, and raw responses archived in an immutable bucket so normalization becomes replayable without re-hitting upstream APIs. Versioned output keys with an atomic `latest` alias give blue-green publishing.
+
+**4. Self-hosted routing stack.** Public Nominatim and OSRM cannot survive 1 M MAU. Host both:
+- **OSRM** in 3 regions (EU-Central, US-East, Asia-SEA) on `c7g.xlarge`.
+- **Nominatim** once, on `r6g.2xlarge` + 1 TB SSD, loaded with the latest `planet.osm.pbf`.
+- Route users via geo-DNS to the nearest region.
+
+**5. Redis in front of the routing stack.** Trip calculations are deterministic: same waypoints + same fuel mode + same daily dataset = same answer. Key on `SHA256(waypoints | mode | dataset_version)`, 1-hour TTL. Popular routes (Istanbul → Berlin, Paris → Munich) hit 95 %+ cache, so the OSRM cluster only serves a handful of unique requests per minute at peak.
+
+**6. Observability.** OpenTelemetry traces across the pipeline and the routing API, Prometheus metrics into Grafana, Sentry for the frontend, SLOs on cache hit ratio (>90 %), upstream feed freshness (<6 h), pipeline p99 (<15 min), routing p99 (<800 ms).
+
+**7. Security & rate limits.** Cloudflare WAF with 1 000 req/min per IP, 100 req/min for routing. No cookies, no user accounts, no PII — the GDPR footprint is trivially empty.
+
+### Capacity model (1 M MAU, 10 % DAU, 3× peak)
+
+| Dimension | Daily | Peak hour | Peak second |
+|---|---:|---:|---:|
+| Sessions | 100 000 | 12 500 | 3.5 |
+| Static GETs (dataset + tiles) | 300 000 | 37 500 | ~10 |
+| Edge bandwidth out | ~20 GB | ~2.5 GB | — |
+| Trip-calc requests | 25 000 | 3 125 | ~0.9 |
+| OSRM requests (95 % cache hit) | 1 250 | 156 | ~0.04 |
+
+### Cost estimate at 1 M MAU
+
+| Component | Monthly |
+|---|---:|
+| Cloudflare Pro + Workers | $25 |
+| R2 storage + egress | $25 |
+| OSRM × 3 regions (`c7g.xlarge`) | $330 |
+| Nominatim (`r6g.2xlarge` + 1 TB EBS) | $340 |
+| Redis cache | $25 |
+| Workflow engine (Temporal Cloud free tier or EventBridge + Lambda) | $20 |
+| Monitoring (Grafana Cloud free + Sentry Team) | $50 |
+| **Total** | **~$815 / mo** |
+
+That is **$0.00082 per user per month** at 1 M MAU — essentially a rounding error, with plenty of headroom for the next order of magnitude.
+
+### Migration path
+
+**Phase 1** — Cloudflare in front of GitHub Pages. `~$25/mo`, one afternoon of work, zero code changes. Solves the bandwidth ceiling immediately.
+
+**Phase 2** — Dataset sharding + Redis-cached trip proxy (still using public Nominatim/OSRM upstream). `~$75/mo`, about a week. Another order of magnitude of headroom.
+
+**Phase 3** — Self-hosted routing stack, managed workflow engine, full observability. `~$815/mo`, two to three weeks. Production-grade at 1 M+ MAU.
+
+### Testing strategy
+
+- **[k6](https://k6.io/)** load tests replaying a realistic traffic mix (75 % map loads, 20 % trip calculations, 5 % raw API) against a staging deploy.
+- **Chaos runs**: kill an upstream feed → verify last-known-good dataset stays published; kill one OSRM region → verify geo-DNS fails over; fill Redis to eviction → verify cache hit ratio degrades gracefully.
+- **Budget alarms** at 50 / 75 / 90 % of expected monthly spend — runaway bills are the most likely real incident at this scale, not downtime.
+
+### Non-goals
+
+Deliberately boring. No Kubernetes, no service mesh, no multi-cloud. The data is public, every endpoint is idempotent, and the load is CDN-cacheable — the right answer is a CDN plus three VMs plus a Redis plus a cron, not a thirty-pod cluster.
+
 ## 📌 Roadmap
 
 - [ ] Germany: optional Tankerkönig integration (requires a free API key)
