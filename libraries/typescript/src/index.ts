@@ -83,13 +83,25 @@ export interface ClientOptions {
 
 const DEFAULT_BASE = 'https://aykutsp.github.io/world-fuel-prices/api/v1/';
 
+/**
+ * Strip any number of trailing slashes from `raw` and append exactly one.
+ * Pure character walk — linear time, no regex, immune to the polynomial
+ * backtracking pattern that CodeQL's `js/polynomial-redos` query flags on
+ * naive `.replace(/\/+$/, '')` forms.
+ */
+function normalizeBaseUrl(raw: string): string {
+  let end = raw.length;
+  while (end > 0 && raw.charCodeAt(end - 1) === 47 /* '/' */) end--;
+  return raw.slice(0, end) + '/';
+}
+
 export class WorldFuelPricesClient {
   private readonly baseUrl: string;
   private readonly fetcher: typeof fetch;
   private cachedDataset: FuelDataset | null = null;
 
   constructor(options: ClientOptions = {}) {
-    this.baseUrl = (options.baseUrl ?? DEFAULT_BASE).replace(/\/+$/, '') + '/';
+    this.baseUrl = normalizeBaseUrl(options.baseUrl ?? DEFAULT_BASE);
     this.fetcher = options.fetch ?? fetch;
   }
 
